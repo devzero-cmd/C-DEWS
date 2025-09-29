@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Egg Detection Viewer</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+    body { font-family: Arial, sans-serif; background: #f4faff; margin: 0; padding: 20px; }
+    .container { max-width: 600px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+    input, button { width: 100%; padding: 12px; margin: 8px 0; border-radius: 6px; border: 1px solid #ccc; font-size: 16px; }
+    img { width: 100%; border: 1px solid #ddd; border-radius: 8px; margin-top: 10px; }
+    .item { margin-bottom: 25px; border-bottom: 1px solid #eee; padding-bottom: 15px; }
+    button { background: #007bff; color: white; border: none; cursor: pointer; }
+    button:hover { background: #0056b3; }
+</style>
+</head>
+<body>
+<div class="container">
+    <h2>Processed Egg Image Viewer</h2>
+
+    <label>Ngrok URL:</label>
+    <input id="ngrok-url" placeholder="https://xxxx.ngrok-free.app">
+
+    <button onclick="loadAll()">Load All Processed Images</button>
+
+    <div id="results"></div>
+</div>
+
+<script>
+async function loadAll() {
+    const url = document.getElementById('ngrok-url').value.trim();
+    const resultsDiv = document.getElementById("results");
+    resultsDiv.innerHTML = "";
+    if (!url) {
+        alert("Enter ngrok URL.");
+        return;
+    }
+
+    try {
+        const listRes = await fetch(`${url}/list`);
+        const data = await listRes.json();
+        const files = data.files || [];
+        if (!files.length) {
+            resultsDiv.innerHTML = "<p>No files found.</p>";
+            return;
+        }
+
+        for (const file of files) {
+            const item = document.createElement("div");
+            item.className = "item";
+
+            item.innerHTML = `
+                <p><strong>${file}</strong></p>
+                <img src="${url}/processed_samples/${file}" alt="${file}" />
+                <p id="count-${file}">Loading egg count...</p>
+            `;
+            resultsDiv.appendChild(item);
+
+            fetchEggCount(url, file);
+        }
+    } catch (err) {
+        resultsDiv.innerHTML = "Error connecting to server.";
+    }
+}
+
+async function fetchEggCount(url, file) {
+    const el = document.getElementById(`count-${file}`);
+    try {
+        const res = await fetch(`${url}/egg_count/egg_counts.csv`);
+        const text = await res.text();
+        const lines = text.trim().split("\n").slice(1);
+        const match = lines.find(line => line.startsWith(file + ","));
+        el.innerText = match ? `Egg count: ${match.split(",")[1]}` : "Egg count not found.";
+    } catch {
+        el.innerText = "Could not fetch egg count.";
+    }
+}
+</script>
+</body>
+</html>
